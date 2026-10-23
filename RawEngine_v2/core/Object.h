@@ -1,15 +1,18 @@
 ﻿#pragma once
-#include "model.h"
 #include "Transform.h"
+#include <string>
 
 namespace core
 {
     class Object
     {
-    public:
-        core::Model model;
-        core::Transform transform;
 
-        Object();
+    public:
+        std::string name = "Object";
+        core::Transform transform = core::Transform();
+
+        Object(){}
     };
+
+
 }

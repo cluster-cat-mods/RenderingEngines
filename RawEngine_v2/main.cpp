@@ -5,20 +5,21 @@
 #include <fstream>
 #include <sstream>
 #include <algorithm>
+#include <iostream>
+
 #include "core/mesh.h"
 #include "core/assimpLoader.h"
 #include "core/Camera.h"
+#include "core/Input.h"
 #include "core/texture.h"
 
 //#define MAC_CLION
 #define VSTUDIO
-
 #ifdef MAC_CLION
 #include "imgui.h"
 #include "backends/imgui_impl_glfw.h"
 #include "backends/imgui_impl_opengl3.h"
 #endif
-
 #ifdef VSTUDIO
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
@@ -40,31 +41,6 @@ int winHeight = 600;
 GLenum drawMode = GL_TRIANGLES;
 
 core::Camera* ActiveCamera;
-
-void processInput(GLFWwindow *window) {
-    float translationOffset = 0.01f;
-    float fovOffset = 0.1f;
-    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-        glfwSetWindowShouldClose(window, true);
-    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-        ActiveCamera->Translate(glm::vec3(0.0f, 0.0f, -translationOffset));
-    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-        ActiveCamera->Translate(glm::vec3(0.0f, 0.0f, translationOffset));
-    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-        ActiveCamera->Translate(glm::vec3(-translationOffset, 0.0f, 0.0f));
-    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-        ActiveCamera->Translate(glm::vec3(translationOffset, 0.0f, 0.0f));
-    if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS)
-        ActiveCamera->Translate(glm::vec3(0.0f, -translationOffset, 0.0f));
-    if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS)
-        ActiveCamera->Translate(glm::vec3(0.0f, translationOffset, 0.0f));
-    if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
-        ActiveCamera->ChangeFOV(-fovOffset);
-    if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
-        ActiveCamera->ChangeFOV(fovOffset);
-
-
-}
 
 void framebufferSizeCallback(GLFWwindow *window,
                              int width, int height) {
@@ -179,7 +155,7 @@ int main()
     core::Mesh quad = core::Mesh::generateQuad();
     core::Model quadModel({quad});
     quadModel.translate(glm::vec3(0,0,-2.5));
-    quadModel.scale(glm::vec3(5, 5, 1));
+    quadModel.scale(glm::vec3(5, 5, 11));
 
     core::Model suzanne = core::AssimpLoader::loadModel("models/nonormalmonkey.obj");
     core::Texture cmgtGatoTexture("textures/CMGaTo_crop.png");
@@ -187,7 +163,7 @@ int main()
     glm::vec4 clearColor = glm::vec4(0.2f, 0.2f, 0.2f, 1.0f);
     glClearColor(clearColor.r,clearColor.g, clearColor.b, clearColor.a);
 
-    core::Camera cam(glm::vec3(0.0f, 0.0f, 10.0f), glm::vec3(0.0f, 0.0f, 0.0f), 45.0f, 0.1f, 100.0f);
+    core::Camera cam(core::Transform(), 10.0f, 45.0f, 0.1f, 100.0f);
     ActiveCamera = &cam;
 
     GLint mvpMatrixUniform = glGetUniformLocation(modelShaderProgram, "mvpMatrix");
@@ -198,7 +174,27 @@ int main()
     double finishFrameTime = 0.0;
     float deltaTime = 0.0f;
     float rotationStrength = 100.0f;
-    while (!glfwWindowShouldClose(window)) {
+
+    core::Input input;
+    float translationOffset = 0.01f;
+    float rotationOffset = 1.0f;
+    float fovOffset = 0.1f;
+    input.AddKeyMap(GLFW_KEY_ESCAPE, GLFW_PRESS, false, [window](){glfwSetWindowShouldClose(window, GLFW_TRUE);});
+    input.AddKeyMap(GLFW_KEY_W, GLFW_PRESS, true, [translationOffset](){ActiveCamera->transform.Translate(glm::vec3(0.0f, 0.0f, -translationOffset));});
+    input.AddKeyMap(GLFW_KEY_S, GLFW_PRESS, true, [translationOffset](){ActiveCamera->transform.Translate(glm::vec3(0.0f, 0.0f, translationOffset));});
+    input.AddKeyMap(GLFW_KEY_A, GLFW_PRESS, true, [translationOffset](){ActiveCamera->transform.Translate(glm::vec3(-translationOffset, 0.0f, 0.0f));});
+    input.AddKeyMap(GLFW_KEY_D, GLFW_PRESS, true, [translationOffset](){ActiveCamera->transform.Translate(glm::vec3(translationOffset, 0.0f, 0.0f));});
+    input.AddKeyMap(GLFW_KEY_Q, GLFW_PRESS, true, [translationOffset](){ActiveCamera->transform.Translate(glm::vec3(0.0f, -translationOffset, 0.0f));});
+    input.AddKeyMap(GLFW_KEY_E, GLFW_PRESS, true, [translationOffset](){ActiveCamera->transform.Translate(glm::vec3(0.0f, translationOffset, 0.0f));});
+    input.AddKeyMap(GLFW_KEY_LEFT, GLFW_PRESS, true, [rotationOffset](){ActiveCamera->transform.Rotate(glm::vec3(0.0f, 1.0f, 0.0f), glm::radians(rotationOffset));});
+    input.AddKeyMap(GLFW_KEY_RIGHT, GLFW_PRESS, true, [rotationOffset](){ActiveCamera->transform.Rotate(glm::vec3(0.0f, 1.0f, 0.0f), glm::radians(-rotationOffset));});
+    input.AddKeyMap(GLFW_KEY_DOWN, GLFW_PRESS, true, [fovOffset](){ActiveCamera->ChangeFOV(-fovOffset);});
+    input.AddKeyMap(GLFW_KEY_UP, GLFW_PRESS, true, [fovOffset](){ActiveCamera->ChangeFOV(fovOffset);});
+
+    input.StartInputCallback(window);
+
+    while (!glfwWindowShouldClose(window))
+    {
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         //region ImGui
@@ -229,12 +225,12 @@ int main()
         ImGui::End();
         //endregion ImGui
 
-        processInput(window);
+        input.ProccesHeldKeys();
 
         suzanne.rotate(glm::vec3(0.0f, 1.0f, 0.0f), glm::radians(rotationStrength) * static_cast<float>(deltaTime));
 
         glUseProgram(textureShaderProgram);
-        glUniformMatrix4fv(textureModelUniform, 1, GL_FALSE, glm::value_ptr(cam.PM(winWidth, winHeight) * cam.VM() * quadModel.getModelMatrix()));
+        glUniformMatrix4fv(textureModelUniform, 1, GL_FALSE, glm::value_ptr(ActiveCamera->PM(winWidth, winHeight) * ActiveCamera->VM() * quadModel.getModelMatrix()));
         glActiveTexture(GL_TEXTURE0);
         glUniform1i(textureUniform, 0);
         glBindTexture(GL_TEXTURE_2D, cmgtGatoTexture.getId());
@@ -243,7 +239,7 @@ int main()
         glActiveTexture(GL_TEXTURE0);
 
         glUseProgram(modelShaderProgram);
-        glUniformMatrix4fv(mvpMatrixUniform, 1, GL_FALSE, glm::value_ptr(cam.PM(winWidth, winHeight) * cam.VM() * suzanne.getModelMatrix()));
+        glUniformMatrix4fv(mvpMatrixUniform, 1, GL_FALSE, glm::value_ptr(ActiveCamera->PM(winWidth, winHeight) * ActiveCamera->VM() * suzanne.getModelMatrix()));
         suzanne.render(drawMode);
         glBindVertexArray(0);
 

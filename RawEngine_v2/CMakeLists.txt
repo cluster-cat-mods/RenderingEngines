@@ -23,6 +23,10 @@ set(IMGUI_SOURCES
         core/Object.h
         core/Transform.cpp
         core/Transform.h
+        core/Input.cpp
+        core/Input.h
+        core/Scene.cpp
+        core/Scene.h
 )
 
 add_executable(RawEngine main.cpp
