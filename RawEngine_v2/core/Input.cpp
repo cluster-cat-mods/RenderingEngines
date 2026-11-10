@@ -13,7 +13,6 @@ namespace core
 
     void Input::KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods)
     {
-        std::cout << "received callback" << std::endl;
         auto* input = static_cast<Input*>
         (
             glfwGetWindowUserPointer(window)

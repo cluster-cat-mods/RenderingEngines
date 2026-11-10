@@ -6,12 +6,15 @@ namespace core
 {
     class Object
     {
-
-    public:
+    protected:
         std::string name = "Object";
+    public:
         core::Transform transform = core::Transform();
 
         Object(){}
+
+        std::string GetName();
+        void SetName(std::string);
     };
 
 

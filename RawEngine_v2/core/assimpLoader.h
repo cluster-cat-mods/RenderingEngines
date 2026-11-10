@@ -3,7 +3,7 @@
 #include <string>
 #include <assimp/scene.h>
 #include "mesh.h"
-#include "model.h"
+#include "Model.h"
 
 namespace core {
 

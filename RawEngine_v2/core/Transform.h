@@ -18,6 +18,10 @@ namespace core
         glm::vec3 GetRotation();
         glm::vec3 GetScale();
 
+        void SetPosition(glm::vec3 position);
+        void SetRotation(glm::vec3 rotation);
+        void SetScale(glm::vec3 scale); //unimplemented
+
         void Translate(glm::vec3 translation);
         void Rotate(glm::vec3 axis, float radians);
         void Scale(glm::vec3 scale);

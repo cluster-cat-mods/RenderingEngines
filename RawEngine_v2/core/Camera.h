@@ -21,8 +21,8 @@ namespace core
 
     public:
         Camera(){}
-        Camera(Transform transform, float targetDistance, float fov, float near, float far);
-        Camera(glm::vec3 position, glm::vec3 rotation, float targetDistance, float fov, float near, float far);
+        Camera(Transform transform, float targetDistance, float fov, float near, float far, std::string);
+        Camera(glm::vec3 position, glm::vec3 rotation, float targetDistance, float fov, float near, float far, std::string);
 
         glm::vec3 GetForward() const;
         glm::vec3 GetTarget() const;
@@ -31,6 +31,8 @@ namespace core
         glm::mat4 PM(int winWidth, int winHeight) const;
 
         void ChangeFOV(float fov);
+        float GetFOV() const;
+        void SetFOV(float fov);
 
     };
 }

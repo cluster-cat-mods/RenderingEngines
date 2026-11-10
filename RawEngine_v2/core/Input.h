@@ -8,6 +8,7 @@ namespace core
 {
     class Input
     {
+        //mouse input adding?
     protected:
         struct KeyMap
         {

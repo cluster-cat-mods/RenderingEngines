@@ -3,18 +3,18 @@
 
 namespace core
 {
-    Camera::Camera(Transform transform, float targetDistance, float fov, float near, float far)
+    Camera::Camera(Transform transform, float targetDistance, float fov, float near, float far, std::string name = "Camera")
     {
-        this->name = "Camera";
+        this->name = name;
         this->transform = transform;
         this->targetDistance = targetDistance;
         this->fov = fov;
         this->near = near;
         this->far = far;
     }
-    Camera::Camera(glm::vec3 position, glm::vec3 rotation, float targetDistance, float fov, float near, float far)
+    Camera::Camera(glm::vec3 position, glm::vec3 rotation, float targetDistance, float fov, float near, float far, std::string name = "Camera")
     {
-        this->name = "Camera";
+        this->name = name;
         this->transform = Transform(position, rotation, glm::vec3(1.0f));
         this->targetDistance = targetDistance;
         this->fov = fov;
@@ -37,6 +37,14 @@ namespace core
     void Camera::ChangeFOV(float fovOffset)
     {
         this->fov += fovOffset;
+    }
+    float Camera::GetFOV() const
+    {
+        return fov;
+    }
+    void Camera::SetFOV(float fov)
+    {
+        this->fov = fov;
     }
 
 }

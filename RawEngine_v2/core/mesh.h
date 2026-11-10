@@ -15,7 +15,7 @@ namespace core {
     public:
         Mesh(std::vector<Vertex> vertices, std::vector<GLuint> indices);
         void render(GLenum drawMode);
-        static Mesh generateQuad();
+        //static Mesh generateQuad();
     private:
         void setupBuffers();
     };
