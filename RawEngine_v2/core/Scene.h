@@ -18,7 +18,7 @@ namespace core
 
         core::Camera* activeCamera{};
 
-        glm::vec4 ambientColour = glm::vec4(0.16f, 0.21f, 0.32f, 1.0f);
+        glm::vec4 ambientColor = glm::vec4(0.16f, 0.21f, 0.32f, 1.0f);
         float ambientIntensity = 0.1f;
 
         glm::vec3 worldUp = glm::vec3(0.0f, 1.0f, 0.0f);
@@ -41,9 +41,9 @@ namespace core
         void SetActiveCamera(core::Camera*);
         core::Camera* GetActiveCamera();
 
-        glm::vec4 GetAmbientColour();
+        glm::vec4 GetAmbientColor();
         float GetAmbientIntensity();
-        void SetAmbientColour(glm::vec4);
+        void SetAmbientColor(glm::vec4);
         void SetAmbientIntensity(float);
 
         glm::vec3 GetWorldUp();

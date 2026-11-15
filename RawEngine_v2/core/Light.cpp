@@ -2,18 +2,18 @@
 
 namespace core
 {
-    Light::Light(core::Transform transform, glm::vec4 colour)
+    Light::Light(core::Transform transform, glm::vec4 color)
     {
         this->transform = transform;
-        this->colour = colour;
+        this->color = color;
     }
 
-    glm::vec4 Light::GetColour()
+    glm::vec4 Light::GetColor()
     {
-        return this->colour;
+        return this->color;
     }
-    void Light::SetColour(glm::vec4 colour)
+    void Light::SetColor(glm::vec4 color)
     {
-        this->colour = colour;
+        this->color = color;
     }
 }

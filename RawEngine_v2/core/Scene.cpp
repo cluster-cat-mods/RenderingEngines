@@ -53,17 +53,17 @@ namespace core
         return &lights;
     }
 
-    glm::vec4 Scene::GetAmbientColour()
+    glm::vec4 Scene::GetAmbientColor()
     {
-        return ambientColour;
+        return ambientColor;
     }
     float Scene::GetAmbientIntensity()
     {
         return ambientIntensity;
     }
-    void Scene::SetAmbientColour(glm::vec4 ambientColour)
+    void Scene::SetAmbientColor(glm::vec4 ambientColor)
     {
-        this->ambientColour = ambientColour;
+        this->ambientColor = ambientColor;
     }
     void Scene::SetAmbientIntensity(float ambientIntensity)
     {

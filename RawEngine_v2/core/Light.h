@@ -6,15 +6,15 @@ namespace core
     class Light : public Object
     {
     private:
-        glm::vec4 colour;
+        glm::vec4 color;
         //col, spec int,
         //copy assignments?
 
     public:
-        Light(Transform transform, glm::vec4 colour);
+        Light(Transform transform, glm::vec4 color);
         ~Light() = default;
 
-        glm::vec4 GetColour();
-        void SetColour(glm::vec4 colour);
+        glm::vec4 GetColor();
+        void SetColor(glm::vec4 color);
     };
 }

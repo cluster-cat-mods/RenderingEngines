@@ -82,3 +82,12 @@ find_package(assimp CONFIG REQUIRED)
 target_link_libraries(RawEngine PRIVATE assimp::assimp)
 find_package(Stb REQUIRED)
 target_include_directories(RawEngine PRIVATE ${Stb_INCLUDE_DIR})
+
+find_package(nfd CONFIG REQUIRED)
+target_link_libraries(RawEngine PRIVATE
+        glad::glad
+        glfw
+        glm::glm
+        assimp::assimp
+        nfd::nfd
+)

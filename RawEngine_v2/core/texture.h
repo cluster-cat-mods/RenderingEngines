@@ -2,6 +2,7 @@
 
 #include <glad/glad.h>
 #include <string>
+#include <glm/vec3.hpp>
 
 namespace core {
 
@@ -11,6 +12,7 @@ namespace core {
 
     public:
         Texture(const std::string& path);
+        Texture();
 
         GLuint getId();
     };

@@ -1,9 +1,11 @@
 #include "texture.h"
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
+#include <glm/vec3.hpp>
 
 namespace core {
-    Texture::Texture(const std::string &path) {
+    Texture::Texture(const std::string &path)
+    {
         glGenTextures(1, &id);
         int width, height, nrComponents;
         if (unsigned char *data = stbi_load(path.c_str(), &width, &height, &nrComponents, 0)) {
@@ -28,10 +30,33 @@ namespace core {
 
             glBindTexture(GL_TEXTURE_2D, 0);
             stbi_image_free(data);
-        } else {
+        }
+        else
+        {
             printf("Texture failed to load at path: %s\n", path.c_str());
             stbi_image_free(data);
         }
+    }
+    Texture::Texture()
+    {
+        int width, height;
+        width = height = 128;
+        unsigned char *data = new unsigned char[width * height * 4];
+        for(int i = 0; i < (int)(width * height * sizeof(unsigned char)); i++)
+        {
+            data[i] = 255;
+        }
+        glGenTextures(1, &id);
+        glBindTexture(GL_TEXTURE_2D, id);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+
+        glBindTexture(GL_TEXTURE_2D, 0);
+
+        delete[] data;
     }
 
     GLuint Texture::getId() {

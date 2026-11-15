@@ -6,6 +6,8 @@
 #include <sstream>
 #include <algorithm>
 #include <iostream>
+#include <nfd.h>
+#include <nfd_glfw3.h>
 
 #include "imgui_internal.h"
 #include "core/mesh.h"
@@ -41,6 +43,41 @@ int winWidth = 800;
 int winHeight = 600;
 
 GLenum drawMode = GL_TRIANGLES;
+
+void error_callback(int error_code, const char* description) {
+    printf("GLFW call failed (code %d): %s\n", error_code, description);
+}
+
+void set_native_window(GLFWwindow* glfwWindow, nfdwindowhandle_t* nativeWindow) {
+    if (!NFD_GetNativeWindowFromGLFWWindow(glfwWindow, nativeWindow)) {
+        printf("NFD_GetNativeWindowFromGLFWWindow failed\n");
+    }
+}
+
+std::string readFilePath(GLFWwindow* window)
+{
+    std::string pathOut;
+    char* path;
+    nfdopendialogu8args_t args = {0};
+    set_native_window(window, &args.parentWindow);
+    const nfdresult_t res = NFD_OpenDialogU8_With(&path, &args);
+    switch (res) {
+        case NFD_OKAY:
+            printf("NFD_OpenDialogU8_With success: %s\n", path);
+            pathOut = path;
+            NFD_FreePathU8(path);
+            break;
+        case NFD_CANCEL:
+            printf("NFD_OpenDialogU8_With cancelled\n");
+            break;
+        case NFD_ERROR:
+            printf("NFD_OpenDialogU8_With error: %s\n", NFD_GetError());
+            break;
+        default:
+            break;
+    }
+    return pathOut;
+}
 
 void framebufferSizeCallback(GLFWwindow *window, int width, int height)
 {
@@ -87,20 +124,41 @@ core::Scene* ActiveScene{};
 //endregion ProgVars
 
 //region ImGuiMethods
-void GenerateImGuiObject(core::Model *model)
+void GenerateImGuiObject(core::Model *model, GLFWwindow* window)
 {
     if (ImGui::CollapsingHeader(model->GetName().c_str()))
     {
-        glm::vec3 newPos = model->transform.GetPosition();
-        if (ImGui::InputFloat3("Position", &newPos[0]))
+        if (ImGui::TreeNode("Transform"))
         {
-            model->transform.SetPosition(newPos);
+            glm::vec3 newPos = model->transform.GetPosition();
+            if (ImGui::InputFloat3("Position", &newPos[0]))
+            {
+                model->transform.SetPosition(newPos);
+            }
+            glm::vec3 newRot = model->transform.GetRotation();
+            if (ImGui::InputFloat3("Rotation", &newRot[0]))
+            {
+                model->transform.SetRotation(newRot);
+            }
+            ImGui::TreePop();
         }
-        glm::vec3 newRot = model->transform.GetRotation();
-        if (ImGui::InputFloat3("Rotation", &newRot[0]))
+        if (ImGui::TreeNode("Material"))
         {
-            model->transform.SetRotation(newRot);
+            if (ImGui::ImageButton("Select TextureMap", model->material.GetTextureMap().getId(), ImVec2(40.0f, 40.0f)))
+            {
+                model->material.SetTextureMap(readFilePath(window));
+            } ImGui::SameLine();
+            if (ImGui::ImageButton("Select NormalMap", model->material.GetNormalMap().getId(), ImVec2(40.0f, 40.0f)))
+            {
+                model->material.SetNormalMap(readFilePath(window));
+            } ImGui::SameLine();
+            if (ImGui::ImageButton("Select SpecularMap", model->material.GetSpecularMap().getId(), ImVec2(40.0f, 40.0f)))
+            {
+                model->material.SetSpecularMap(readFilePath(window));
+            }
+            ImGui::TreePop();
         }
+
     }
 }
 void generateImGuiObject(core::Camera *camera)
@@ -150,15 +208,17 @@ void generateImGuiObject(core::Light *light)
         {
             light->transform.SetRotation(newRot);
         }
-        glm::vec3 newCol = light->GetColour();
-        if (ImGui::ColorEdit3("Colour", &newCol[0]))
+        glm::vec3 newCol = light->GetColor();
+        if (ImGui::ColorEdit3("Color", &newCol[0]))
         {
-            light->SetColour(glm::vec4(newCol, 1));
+            light->SetColor(glm::vec4(newCol, 1));
         }
     }
 }
 
 //endregion ImGuiMethods
+
+float* deltaPtr{};
 
 int main()
 {
@@ -182,10 +242,12 @@ int main()
     glfwSetFramebufferSizeCallback(window, framebufferSizeCallback);
     //endregion glfwInit
 
+    //region GLADInit
     if (!gladLoadGLLoader((GLADloadproc) glfwGetProcAddress)) {
         printf("Failed to initialize GLAD\n");
         return -1;
     }
+    //endregion GLADInit
 
     //region ImGUIInit
     IMGUI_CHECKVERSION();
@@ -197,6 +259,10 @@ int main()
     ImGui_ImplOpenGL3_Init("#version 400");
     //endregion ImGUIInit
 
+    //region NFDInit
+    NFD_Init();
+    //endregion NFDInit
+
     glEnable(GL_DEPTH_TEST);
     glFrontFace(GL_CCW);
     glEnable(GL_CULL_FACE);
@@ -204,38 +270,16 @@ int main()
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
+
     //region shaderProgram
     const GLuint modelVertexShader = generateShader("shaders/modelVertex.vs", GL_VERTEX_SHADER);
-    const GLuint fragmentShader = generateShader("shaders/adsLight.fs", GL_FRAGMENT_SHADER);
-    const GLuint colourFragmentShader = generateShader("shaders/colour.fs", GL_FRAGMENT_SHADER);
-
-    const GLuint textureShader = generateShader("shaders/texture.fs", GL_FRAGMENT_SHADER);
+    const GLuint colorFragmentShader = generateShader("shaders/color.fs", GL_FRAGMENT_SHADER);
 
     int success;
     char infoLog[512];
-    const unsigned int modelShaderProgram = glCreateProgram();
-    glAttachShader(modelShaderProgram, modelVertexShader);
-    glAttachShader(modelShaderProgram, fragmentShader);
-    glLinkProgram(modelShaderProgram);
-    glGetProgramiv(modelShaderProgram, GL_LINK_STATUS, &success);
-    if (!success) {
-        glGetProgramInfoLog(modelShaderProgram, 512, NULL, infoLog);
-        printf("Error! Making Shader Program: %s\n", infoLog);
-    }
-
-    const unsigned int textureShaderProgram = glCreateProgram();
-    glAttachShader(textureShaderProgram, modelVertexShader);
-    glAttachShader(textureShaderProgram, textureShader);
-    glLinkProgram(textureShaderProgram);
-    glGetProgramiv(textureShaderProgram, GL_LINK_STATUS, &success);
-    if (!success) {
-        glGetProgramInfoLog(textureShaderProgram, 512, NULL, infoLog);
-        printf("Error! Making Shader Program: %s\n", infoLog);
-    }
-
     const unsigned int gizmoShaderProgram = glCreateProgram();
     glAttachShader(gizmoShaderProgram, modelVertexShader);
-    glAttachShader(gizmoShaderProgram, colourFragmentShader);
+    glAttachShader(gizmoShaderProgram, colorFragmentShader);
     glLinkProgram(gizmoShaderProgram);
     glGetProgramiv(gizmoShaderProgram, GL_LINK_STATUS, &success);
     if (!success) {
@@ -244,26 +288,18 @@ int main()
     }
 
     glDeleteShader(modelVertexShader);
-    glDeleteShader(fragmentShader);
-    glDeleteShader(textureShader);
-    glDeleteShader(colourFragmentShader);
-
-    GLint mvpMatrixUniform = glGetUniformLocation(modelShaderProgram, "mvpMatrix");
-    GLint mMatrixUniform = glGetUniformLocation(modelShaderProgram, "mMatrix");
-    GLint textUniform = glGetUniformLocation(modelShaderProgram, "text");
-    GLint textureModelUniform = glGetUniformLocation(textureShaderProgram, "mvpMatrix");
-    GLint textureUniform = glGetUniformLocation(textureShaderProgram, "text");
-
-    GLint lightAC0Uniform = glGetUniformLocation(modelShaderProgram, "ambientColour");
-    GLint lightAI0Uniform = glGetUniformLocation(modelShaderProgram, "ambientIntensity");
-    GLint lightCountUniform = glGetUniformLocation(modelShaderProgram, "lightCount");
+    glDeleteShader(colorFragmentShader);
 
     GLint gizmo_mvpMatrixUniform = glGetUniformLocation(gizmoShaderProgram, "mvpMatrix");
     GLint gizmo_mMatrixUniform = glGetUniformLocation(gizmoShaderProgram, "mMatrix");
 
     //endregion shaderProgram
 
+
     //region Instantiating
+    glm::vec4 clearColor = glm::vec4(0.2f, 0.2f, 0.2f, 1.0f);
+    glClearColor(clearColor.r,clearColor.g, clearColor.b, clearColor.a);
+
     core::Scene mainScene = core::Scene();
     mainScene.SetName("mainScene");
     ActiveScene = &mainScene;
@@ -272,6 +308,7 @@ int main()
     suzanne.SetName("nonnormalmonkey");
     suzanne.transform.SetPosition(glm::vec3(0,0,0));
     core::Model* suzanneOb = ActiveScene->Instantiate(suzanne);
+    suzanneOb->material.SetTextureMap("../textures/CMGaTo_crop.png");
 
     core::Model suzanne2 = core::AssimpLoader::loadModel("models/nonormalmonkey.obj");
     suzanne2.SetName("nonnormalmonkey 2");
@@ -283,6 +320,7 @@ int main()
     sphere.SetName("sphere");
     sphere.transform.SetPosition(glm::vec3(0,4,0));
     core::Model* sphereOb = ActiveScene->Instantiate(sphere);
+    //sphereOb->material.SetTextureMap("../textures/CMGaTo_crop.png");
 
     core::Model beer = core::AssimpLoader::loadModel("models/beer.obj");
     beer.SetName("beer");
@@ -290,12 +328,6 @@ int main()
     beer.transform.Scale(glm::vec3(5.0f, 5.0f, 5.0f));
     beer.transform.SetRotation(glm::vec3(0.0f, 0.0f, 20.0f));
     core::Model* beerOb = ActiveScene->Instantiate(beer);
-
-    core::Texture cmgtGatoTexture("textures/CMGaTo_crop.png");
-    core::Texture hexTexture("textures/Metal_Plate.png");
-
-    glm::vec4 clearColor = glm::vec4(0.2f, 0.2f, 0.2f, 1.0f);
-    glClearColor(clearColor.r,clearColor.g, clearColor.b, clearColor.a);
 
     core::Light light1(core::Transform(), glm::vec4(1.0f, 0.97f, 0.83f, 1.0f));
     core::Light* mainLight = ActiveScene->Instantiate(light1);
@@ -325,20 +357,22 @@ int main()
 
     //region input
     core::Input input;
-    float translationOffset = 0.01f;
-    float rotationOffset = 0.1f;
-    float fovOffset = 0.025f;
+    float cameraMoveSpeed = 1.0f;
+    float cameraRotateSpeed = 1.0;
+    float cameraZoomSpeed = 1.0f;
+    deltaPtr = &deltaTime;
+    input.AddKeyMap(GLFW_KEY_0, GLFW_PRESS, false, [](){std::cout << *deltaPtr << std::endl;});
     input.AddKeyMap(GLFW_KEY_ESCAPE, GLFW_PRESS, false, [window](){glfwSetWindowShouldClose(window, GLFW_TRUE);});
-    input.AddKeyMap(GLFW_KEY_W, GLFW_PRESS, true, [translationOffset](){ActiveScene->GetActiveCamera()->transform.Translate(glm::vec3(0.0f, 0.0f, -translationOffset));});
-    input.AddKeyMap(GLFW_KEY_S, GLFW_PRESS, true, [translationOffset](){ActiveScene->GetActiveCamera()->transform.Translate(glm::vec3(0.0f, 0.0f, translationOffset));});
-    input.AddKeyMap(GLFW_KEY_A, GLFW_PRESS, true, [translationOffset](){ActiveScene->GetActiveCamera()->transform.Translate(glm::vec3(-translationOffset, 0.0f, 0.0f));});
-    input.AddKeyMap(GLFW_KEY_D, GLFW_PRESS, true, [translationOffset](){ActiveScene->GetActiveCamera()->transform.Translate(glm::vec3(translationOffset, 0.0f, 0.0f));});
-    input.AddKeyMap(GLFW_KEY_Q, GLFW_PRESS, true, [translationOffset](){ActiveScene->GetActiveCamera()->transform.Translate(glm::vec3(0.0f, -translationOffset, 0.0f));});
-    input.AddKeyMap(GLFW_KEY_E, GLFW_PRESS, true, [translationOffset](){ActiveScene->GetActiveCamera()->transform.Translate(glm::vec3(0.0f, translationOffset, 0.0f));});
-    input.AddKeyMap(GLFW_KEY_LEFT, GLFW_PRESS, true, [rotationOffset](){ActiveScene->GetActiveCamera()->transform.Rotate(glm::vec3(0.0f, 1.0f, 0.0f), glm::radians(rotationOffset));});
-    input.AddKeyMap(GLFW_KEY_RIGHT, GLFW_PRESS, true, [rotationOffset](){ActiveScene->GetActiveCamera()->transform.Rotate(glm::vec3(0.0f, 1.0f, 0.0f), glm::radians(-rotationOffset));});
-    input.AddKeyMap(GLFW_KEY_DOWN, GLFW_PRESS, true, [fovOffset](){ActiveScene->GetActiveCamera()->ChangeFOV(-fovOffset);});
-    input.AddKeyMap(GLFW_KEY_UP, GLFW_PRESS, true, [fovOffset](){ActiveScene->GetActiveCamera()->ChangeFOV(fovOffset);});
+    input.AddKeyMap(GLFW_KEY_W, GLFW_PRESS, true, [cameraMoveSpeed](){ActiveScene->GetActiveCamera()->transform.Translate(glm::vec3(0.0f, 0.0f, -cameraMoveSpeed * *deltaPtr));});
+    input.AddKeyMap(GLFW_KEY_S, GLFW_PRESS, true, [cameraMoveSpeed](){ActiveScene->GetActiveCamera()->transform.Translate(glm::vec3(0.0f, 0.0f, cameraMoveSpeed  * *deltaPtr));});
+    input.AddKeyMap(GLFW_KEY_A, GLFW_PRESS, true, [cameraMoveSpeed](){ActiveScene->GetActiveCamera()->transform.Translate(glm::vec3(-cameraMoveSpeed  * *deltaPtr, 0.0f, 0.0f));});
+    input.AddKeyMap(GLFW_KEY_D, GLFW_PRESS, true, [cameraMoveSpeed](){ActiveScene->GetActiveCamera()->transform.Translate(glm::vec3(cameraMoveSpeed  * *deltaPtr, 0.0f, 0.0f));});
+    input.AddKeyMap(GLFW_KEY_Q, GLFW_PRESS, true, [cameraMoveSpeed](){ActiveScene->GetActiveCamera()->transform.Translate(glm::vec3(0.0f, -cameraMoveSpeed  * *deltaPtr, 0.0f));});
+    input.AddKeyMap(GLFW_KEY_E, GLFW_PRESS, true, [cameraMoveSpeed](){ActiveScene->GetActiveCamera()->transform.Translate(glm::vec3(0.0f, cameraMoveSpeed  * *deltaPtr, 0.0f));});
+    input.AddKeyMap(GLFW_KEY_LEFT, GLFW_PRESS, true, [cameraRotateSpeed](){ActiveScene->GetActiveCamera()->transform.Rotate(glm::vec3(0.0f, 1.0f, 0.0f), glm::radians(cameraRotateSpeed  * *deltaPtr));});
+    input.AddKeyMap(GLFW_KEY_RIGHT, GLFW_PRESS, true, [cameraRotateSpeed](){ActiveScene->GetActiveCamera()->transform.Rotate(glm::vec3(0.0f, 1.0f, 0.0f), glm::radians(-cameraRotateSpeed  * *deltaPtr));});
+    input.AddKeyMap(GLFW_KEY_Z, GLFW_PRESS, true, [cameraZoomSpeed](){ActiveScene->GetActiveCamera()->ChangeFOV(-cameraZoomSpeed * *deltaPtr);});
+    input.AddKeyMap(GLFW_KEY_X, GLFW_PRESS, true, [cameraZoomSpeed](){ActiveScene->GetActiveCamera()->ChangeFOV(cameraZoomSpeed * *deltaPtr);});
 
     input.StartInputCallback(window);
     //endregion input
@@ -356,48 +390,80 @@ int main()
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
-        ImGui::Begin("No rendering, too much engine");
-        ImGui::Text("Moin!");
-        if (ImGui::Button(label.c_str()))
+        ImGui::Begin("Engine settings");
+        ImGui::BeginTabBar("SettingTabBar");
+        if (ImGui::BeginTabItem("Rendering"))
         {
-            if (drawMode == GL_TRIANGLES)
+            if (ImGui::Button(label.c_str()))
             {
-                drawMode = GL_LINES;
-                label = "Wireframe";
+                if (drawMode == GL_TRIANGLES)
+                {
+                    drawMode = GL_LINES;
+                    label = "Wireframe";
+                }
+                else if (drawMode == GL_LINES)
+                {
+                    drawMode = GL_POINTS;
+                    label = "Points";
+                }
+                else if (drawMode == GL_POINTS)
+                {
+                    drawMode = GL_TRIANGLES;
+                    label = "Triangles";
+                }
             }
-            else if (drawMode == GL_LINES)
-            {
-                drawMode = GL_POINTS;
-                label = "Points";
-            }
-            else if (drawMode == GL_POINTS)
-            {
-                drawMode = GL_TRIANGLES;
-                label = "Triangles";
-            }
+            ImGui::PopID();
         }
+        if (ImGui::BeginTabItem("Active camera"))
+        {
+            ImGui::Text("vars not being fucking updated grr");
+            float& newCamMoveSpeed = cameraMoveSpeed;
+            if (ImGui::InputFloat("Move speed", &newCamMoveSpeed))
+            {
+                cameraMoveSpeed = newCamMoveSpeed;
+            }
+            float& newCamRotateSpeed = cameraRotateSpeed;
+            if (ImGui::InputFloat("Rotate speed", &newCamRotateSpeed))
+            {
+                cameraRotateSpeed = newCamRotateSpeed;
+            }
+            float newCamZoomSpeed = cameraZoomSpeed;
+            if (ImGui::InputFloat("Zoom speed", &newCamZoomSpeed))
+            {
+                cameraZoomSpeed = newCamZoomSpeed;
+            }
+            ImGui::PopID();
+        }
+        ImGui::EndTabBar();
+
         ImGui::End();
 
         ImGui::Begin(ActiveScene->GetName().c_str());
-        glm::vec3 ambientCol = ActiveScene->GetAmbientColour();
-        if (ImGui::ColorEdit3("AmbientColour", &ambientCol[0]))
+        ImGui::BeginTabBar("SceneSetting");
+        if (ImGui::BeginTabItem("Lighting"))
         {
-            ActiveScene->SetAmbientColour(glm::vec4(ambientCol, 1.0f));
+            glm::vec3 ambientCol = ActiveScene->GetAmbientColor();
+            if (ImGui::ColorEdit3("AmbientColor", &ambientCol[0]))
+            {
+                ActiveScene->SetAmbientColor(glm::vec4(ambientCol, 1.0f));
+            }
+            float ambientIntensity = ActiveScene->GetAmbientIntensity();
+            if (ImGui::InputFloat("AmbientIntensity", &ambientIntensity))
+            {
+                ActiveScene->SetAmbientIntensity(ambientIntensity);
+            }
         }
-        float ambientIntensity = ActiveScene->GetAmbientIntensity();
-        if (ImGui::InputFloat("AmbientIntensity", &ambientIntensity))
-        {
-            ActiveScene->SetAmbientIntensity(ambientIntensity);
-        }
+        ImGui::EndTabItem();
+        ImGui::EndTabBar();
 
-        ImGui::BeginTabBar("Objects");
+        ImGui::BeginTabBar("Hierarchy");
         if (ImGui::BeginTabItem("Models"))
         {
             int i = 0;
             for (core::Model& model : *ActiveScene->GetModels())
             {
                 ImGui::PushID(i);
-                GenerateImGuiObject(&model);
+                GenerateImGuiObject(&model, window);
                 ImGui::PopID();
                 i++;
             }
@@ -428,14 +494,8 @@ int main()
             }
             ImGui::EndTabItem();
         }
-
         ImGui::EndTabBar();
-
         ImGui::End();
-
-
-
-
 
         //endregion ImGui
 
@@ -449,45 +509,42 @@ int main()
 
         beerOb->transform.Rotate(glm::vec3(0.0f, 1.0f, 0.0f), glm::radians(rotationStrength * 0.2f) * static_cast<float>(deltaTime));
         //endregion modelBehaviour
-
-        /*
-        glUseProgram(textureShaderProgram);
-        glUniformMatrix4fv(textureModelUniform, 1, GL_FALSE, glm::value_ptr(ActiveScene->GetActiveCamera()->PM(winWidth, winHeight) * ActiveScene->GetActiveCamera()->VM() * quadOb->transform.GetModelMatrix()));
-        glActiveTexture(GL_TEXTURE0);
-        glUniform1i(textureUniform, 0);
-        glBindTexture(GL_TEXTURE_2D, cmgtGatoTexture.getId());
-        quadModel.render(drawMode);
-        glBindVertexArray(0);
-        glActiveTexture(GL_TEXTURE0);
-        */
-
         for (core::Model& model : *ActiveScene->GetModels())
         {
-            int i = 0;
-            for (core::Light& light : *ActiveScene->GetLights())
-            {
-                std::string lightUniformString = "lights[" + std::to_string(i) + "].";
-                glUseProgram(modelShaderProgram);
-                GLint lightColourUniform = glGetUniformLocation(modelShaderProgram, (lightUniformString + "colour").c_str());
-                GLint lightPositionUniform = glGetUniformLocation(modelShaderProgram, (lightUniformString + "position").c_str());
+            const unsigned int shaderProgram = model.material.GetShaderProgram();
+            GLint mvpMatrixUniform = glGetUniformLocation(shaderProgram, "mvpMatrix");
+            GLint mMatrixUniform = glGetUniformLocation(shaderProgram, "mMatrix");
+            GLint lightAC0Uniform = glGetUniformLocation(shaderProgram, "ambientColor");
+            GLint lightAI0Uniform = glGetUniformLocation(shaderProgram, "ambientIntensity");
+            GLint lightCountUniform = glGetUniformLocation(shaderProgram, "lightCount");
+            GLint cameraPositionUniform = glGetUniformLocation(shaderProgram, "cameraPosition");
 
-                glUniform4fv(lightColourUniform, 1, &light.GetColour()[0]);
-                glUniform3fv(lightPositionUniform, 1, &light.transform.GetPosition()[0]);
-                i++;
-            }
-
-            glUseProgram(modelShaderProgram);
-            glUniform4fv(lightAC0Uniform, 1, &ActiveScene->GetAmbientColour()[0]);
+            glUseProgram(shaderProgram);
+            glUniform4fv(lightAC0Uniform, 1, &ActiveScene->GetAmbientColor()[0]);
             glUniform1f(lightAI0Uniform, ActiveScene->GetAmbientIntensity());
             glUniform1i(lightCountUniform, ActiveScene->GetLights()->size());
             glUniformMatrix4fv(mvpMatrixUniform, 1, GL_FALSE, glm::value_ptr(ActiveScene->GetActiveCamera()->PM(winWidth, winHeight) * ActiveScene->GetActiveCamera()->VM() * model.transform.GetModelMatrix()));
             glUniformMatrix4fv(mMatrixUniform, 1, GL_FALSE, glm::value_ptr(model.transform.GetModelMatrix()));
-            glActiveTexture(GL_TEXTURE0);
-            glUniform1i(textureUniform, 0);
-            glBindTexture(GL_TEXTURE_2D, hexTexture.getId());
+            glUniform3fv(cameraPositionUniform, 1, &ActiveScene->GetActiveCamera()->transform.GetPosition()[0]);
+            glBindVertexArray(0);
+
+            int i = 0;
+            for (core::Light& light : *ActiveScene->GetLights())
+            {
+                glUseProgram(shaderProgram);
+                std::string lightUniformString = "lights[" + std::to_string(i) + "].";
+                GLint lightColorUniform = glGetUniformLocation(shaderProgram, (lightUniformString + "color").c_str());
+                GLint lightPositionUniform = glGetUniformLocation(shaderProgram, (lightUniformString + "position").c_str());
+
+                glUniform4fv(lightColorUniform, 1, &light.GetColor()[0]);
+                glUniform3fv(lightPositionUniform, 1, &light.transform.GetPosition()[0]);
+                i++;
+                glBindVertexArray(0);
+            }
+
+            glUseProgram(shaderProgram);
             model.render(drawMode);
             glBindVertexArray(0);
-            glActiveTexture(GL_TEXTURE0);
         }
 
 
@@ -516,12 +573,20 @@ int main()
         currentTime = finishFrameTime;
     }
 
-    glDeleteProgram(modelShaderProgram);
+    glDeleteProgram(gizmoShaderProgram);
+    for (core::Model& model : *ActiveScene->GetModels())
+    {
+        model.material.DeleteShaderProgram();
+    }
+
 
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
 
     glfwTerminate();
+
+    NFD_Quit();
+
     return 0;
 }

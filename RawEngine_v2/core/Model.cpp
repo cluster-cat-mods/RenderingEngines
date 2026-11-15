@@ -1,6 +1,8 @@
 #include "Model.h"
 #include <glm/gtc/matrix_transform.hpp>
 
+#include "Material.h"
+
 namespace core {
     void Model::render(GLenum drawMode)
     {
@@ -15,6 +17,7 @@ namespace core {
         this->name = name;
         this->meshes = meshes;
         this->transform = transform;
+        this->material = Material();
     }
     Model::Model(std::vector<Mesh> meshes, glm::vec3 position, glm::vec3 rotation, glm::vec3 scale, std::string name = "Model")
     {

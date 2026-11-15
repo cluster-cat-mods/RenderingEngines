@@ -2,6 +2,8 @@
 
 #include <vector>
 #include <glm/ext/matrix_float4x4.hpp>
+
+#include "Material.h"
 #include "mesh.h"
 #include "Object.h"
 
@@ -12,6 +14,7 @@ namespace core
     private:
         std::vector<core::Mesh> meshes;
     public:
+        core::Material material = core::Material();
         Model(std::vector<core::Mesh> meshes) : meshes(meshes){}
         Model(std::vector<core::Mesh> meshes, Transform transform, std::string name);
         Model(std::vector<core::Mesh> meshes, glm::vec3 position, glm::vec3 rotation, glm::vec3 scale, std::string name);
