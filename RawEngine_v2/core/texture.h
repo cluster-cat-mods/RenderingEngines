@@ -12,7 +12,7 @@ namespace core {
 
     public:
         Texture(const std::string& path);
-        Texture();
+        Texture(glm::vec3 color);
 
         GLuint getId();
     };

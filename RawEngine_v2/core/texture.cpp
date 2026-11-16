@@ -2,6 +2,8 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 #include <glm/vec3.hpp>
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include <stb_image_write.h>
 
 namespace core {
     Texture::Texture(const std::string &path)
@@ -37,14 +39,16 @@ namespace core {
             stbi_image_free(data);
         }
     }
-    Texture::Texture()
+    Texture::Texture(glm::vec3 color)
     {
         int width, height;
         width = height = 128;
-        unsigned char *data = new unsigned char[width * height * 4];
-        for(int i = 0; i < (int)(width * height * sizeof(unsigned char)); i++)
+        unsigned char *data = new unsigned char[3 * width * height];
+        for(int i = 0; i < (int)(width * height); i++)
         {
-            data[i] = 255;
+            data[i * 3] = (unsigned char)(color.x * 255);
+            data[i * 3 + 1] = (unsigned char)(color.y * 255);
+            data[i * 3 + 2] = (unsigned char)(color.z * 255);
         }
         glGenTextures(1, &id);
         glBindTexture(GL_TEXTURE_2D, id);
@@ -52,9 +56,13 @@ namespace core {
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
 
         glBindTexture(GL_TEXTURE_2D, 0);
+        std::string path = "../";
+        //path.append(std::to_string(id));
+        //path.append(".png");
+        //stbi_write_png(path.c_str(), width, height, 3, data, width * 3);
 
         delete[] data;
     }

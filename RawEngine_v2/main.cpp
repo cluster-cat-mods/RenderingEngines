@@ -146,15 +146,23 @@ void GenerateImGuiObject(core::Model *model, GLFWwindow* window)
         {
             if (ImGui::ImageButton("Select TextureMap", model->material.GetTextureMap().getId(), ImVec2(40.0f, 40.0f)))
             {
-                model->material.SetTextureMap(readFilePath(window));
+                std::string path = readFilePath(window);
+                if (!path.empty()) model->material.SetTextureMap(path);
             } ImGui::SameLine();
             if (ImGui::ImageButton("Select NormalMap", model->material.GetNormalMap().getId(), ImVec2(40.0f, 40.0f)))
             {
-                model->material.SetNormalMap(readFilePath(window));
+                std::string path = readFilePath(window);
+                if (!path.empty()) model->material.SetNormalMap(path);
             } ImGui::SameLine();
             if (ImGui::ImageButton("Select SpecularMap", model->material.GetSpecularMap().getId(), ImVec2(40.0f, 40.0f)))
             {
-                model->material.SetSpecularMap(readFilePath(window));
+                std::string path = readFilePath(window);
+                if (!path.empty()) model->material.SetSpecularMap(path);
+            }
+            float newSpecularStrength = model->material.GetSpecularStrength();
+            if (ImGui::DragFloat("Specular Strength", &newSpecularStrength, 0.05f, 0.0f, 1.0f))
+            {
+                model->material.SetSpecularStrength(newSpecularStrength);
             }
             ImGui::TreePop();
         }

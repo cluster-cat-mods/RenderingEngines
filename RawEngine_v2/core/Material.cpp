@@ -95,6 +95,7 @@ namespace core
         GLint materialTextureMapUniform = glGetUniformLocation(shaderProgram, (materialUniform + "textureMap").c_str());
         GLint materialNormalMapUniform = glGetUniformLocation(shaderProgram, (materialUniform + "normalMap").c_str());
         GLint materialSpecularMapUniform = glGetUniformLocation(shaderProgram, (materialUniform + "specularMap").c_str());
+        GLint materialShininessUniform = glGetUniformLocation(shaderProgram, (materialUniform + "shininess").c_str());
 
         Texture& diffuse = GetTextureMap();
         Texture& normal = GetNormalMap();
@@ -104,14 +105,14 @@ namespace core
         glActiveTexture(GL_TEXTURE0);
         glUniform1i(materialTextureMapUniform, 0);
         glBindTexture(GL_TEXTURE_2D, diffuse.getId());
-        printf(std::to_string(GetTextureMap().getId()).c_str());
-        printf("\n");
         glActiveTexture(GL_TEXTURE1);
         glUniform1i(materialNormalMapUniform, 1);
         glBindTexture(GL_TEXTURE_2D, normal.getId());
         glActiveTexture(GL_TEXTURE2);
         glUniform1i(materialSpecularMapUniform, 2);
         glBindTexture(GL_TEXTURE_2D, specular.getId());
+
+        glUniform1f(materialShininessUniform, specularStrength);
         glBindVertexArray(0);
 
         return shaderProgram;
@@ -124,7 +125,10 @@ namespace core
 
     unsigned int Material::GetShaderProgram()
     {
-        if (shaderProgram == 0) shaderProgram = CreateShaderProgram();
+        if (shaderProgram == 0)
+        {
+            shaderProgram = CreateShaderProgram();
+        }
 
         glUseProgram(shaderProgram);
 
@@ -136,6 +140,11 @@ namespace core
 
         glActiveTexture(GL_TEXTURE2);
         glBindTexture(GL_TEXTURE_2D, specularMap.getId());
+
+        std::string materialUniform = "material.";
+        GLint materialShininessUniform = glGetUniformLocation(shaderProgram, (materialUniform + "shininess").c_str());
+        glUniform1f(materialShininessUniform, specularStrength);
+
         return shaderProgram;
     }
 
@@ -163,6 +172,15 @@ namespace core
     void Material::SetSpecularMap(std::string path)
     {
         this->specularMap = Texture(path);
+    }
+
+    float Material::GetSpecularStrength()
+    {
+        return specularStrength;
+    }
+    void Material::SetSpecularStrength(float specularStrength)
+    {
+        this->specularStrength = specularStrength;
     }
 
 }

@@ -14,11 +14,11 @@ namespace core
 
         unsigned int shaderProgram = 0;
 
-        Texture textureMap;
-        Texture normalMap;
-        Texture specularMap;
+        Texture textureMap = Texture(glm::vec3(1.0f));
+        Texture normalMap = Texture(glm::vec3(0.5f, 0.5f, 1.0f));
+        Texture specularMap = Texture(glm::vec3(0.0f));
 
-
+        float specularStrength = 0.0f;
 
 
     public:
@@ -38,6 +38,9 @@ namespace core
         void SetTextureMap(std::string path);
         void SetNormalMap(std::string path);
         void SetSpecularMap(std::string path);
+
+        float GetSpecularStrength();
+        void SetSpecularStrength(float specularStrength);
 
     };
 }

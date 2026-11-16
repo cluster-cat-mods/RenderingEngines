@@ -12,6 +12,7 @@ struct Material
     sampler2D textureMap;
     sampler2D normalMap;
     sampler2D specularMap;
+    float shininess;
 };
 uniform Material material;
 
@@ -52,10 +53,12 @@ void main()
         vec3 direction = normalize(lights[i].position - fPos);
         Diffuse = max(dot(tbn * direction, normal), 0) * lights[i].color * diffuseColor;
         Attenuation = Diffuse / (1.0 + 0.7 + 1.8);
-        vec3 reflection = reflect(normal, direction);
-        vec3 camDirection = normalize(fPos - cameraPosition);
+        vec3 reflection = reflect(-direction, normal);
+        vec3 camDirection = normalize(cameraPosition - fPos);
 
-        Specular = pow(max(dot(camDirection, reflection), 0), specularIntensity) * lights[i].color * diffuseColor;
+        float specular = material.shininess == 0 ? 0 : pow(max(dot(camDirection, reflection), 0), material.shininess);
+        specular *= specularIntensity;
+        Specular = specular * lights[i].color * diffuseColor;
         FragColor += Ambient + Attenuation + Specular;
     }
 }
