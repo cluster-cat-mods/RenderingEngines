@@ -44,19 +44,38 @@ namespace core
         shaderProgram = 0;
     }
 
-    GLuint Material::AddVertexShader(std::string path)
+    GLuint Material::GetVertexShader()
     {
-        GLuint shader = generateShader(path, GL_VERTEX_SHADER);
-        this->vertexShaders.push_back(shader);
-        printf("add vs: %s\n", path.c_str());
-        return shader;
+        return vertexShader;
     }
-    GLuint Material::AddFragmentShader(std::string path)
+    GLuint Material::GetFragmentShader()
     {
-        GLuint shader = generateShader(path, GL_FRAGMENT_SHADER);
-        this->fragmentShaders.push_back(shader);
-        printf("add fs: %s\n", path.c_str());
-        return shader;
+        return fragmentShader;
+    }
+
+    std::string Material::GetVertexShaderPath()
+    {
+        return vsPath;
+    }
+
+    std::string Material::GetFragmentShaderPath()
+    {
+        return fsPath;
+    }
+
+    void Material::SetVertexShader(std::string path)
+    {
+        vertexShader = generateShader(path, GL_VERTEX_SHADER);;
+        vsPath = path;
+        shaderProgram = 0;
+        printf("Set vs: %s\n", path.c_str());
+    }
+    void Material::SetFragmentShader(std::string path)
+    {
+        fragmentShader = generateShader(path, GL_FRAGMENT_SHADER);
+        fsPath = path;
+        shaderProgram = 0;
+        printf("Set fs: %s\n", path.c_str());
     }
 
     unsigned int Material::CreateShaderProgram()
@@ -64,16 +83,12 @@ namespace core
         int success;
         char infoLog[512];
         unsigned int shaderProgram = glCreateProgram();
-        if (vertexShaders.empty()) AddVertexShader("defaultAssets/shaders/modelVertex.vs");
-        for (GLuint vs : vertexShaders)
-        {
-            glAttachShader(shaderProgram, vs);
-        }
-        if (fragmentShaders.empty()) AddFragmentShader("defaultAssets/shaders/adsLight.fs");
-        for (GLuint fs : fragmentShaders)
-        {
-            glAttachShader(shaderProgram, fs);
-        }
+        if (vertexShader == 0) SetVertexShader("defaultAssets/shaders/model_default.vs");
+        glAttachShader(shaderProgram, vertexShader);
+        if (fragmentShader == 0) SetFragmentShader("defaultAssets/shaders/model_lit_ads.fs");
+        glAttachShader(shaderProgram, fragmentShader);
+        printf("Created ShaderProgram with %s and %s.\n", GetVertexShaderPath().c_str(), GetFragmentShaderPath().c_str());
+
         glLinkProgram(shaderProgram);
         glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
         if (!success) {
@@ -81,20 +96,15 @@ namespace core
             printf("Error! Making Shader Program: %s\n", infoLog);
         }
 
-        for (GLuint vs : vertexShaders)
-        {
-            glDeleteShader(vs);
-        }
-        for (GLuint fs : fragmentShaders)
-        {
-            glDeleteShader(fs);
-        }
+        glDeleteShader(vertexShader);
+        glDeleteShader(fragmentShader);
 
         std::string materialUniform = "material.";
 
         GLint materialTextureMapUniform = glGetUniformLocation(shaderProgram, (materialUniform + "textureMap").c_str());
         GLint materialNormalMapUniform = glGetUniformLocation(shaderProgram, (materialUniform + "normalMap").c_str());
         GLint materialSpecularMapUniform = glGetUniformLocation(shaderProgram, (materialUniform + "specularMap").c_str());
+        GLint materialColorUniform = glGetUniformLocation(shaderProgram, (materialUniform + "color").c_str());
         GLint materialShininessUniform = glGetUniformLocation(shaderProgram, (materialUniform + "shininess").c_str());
 
         Texture& diffuse = GetTextureMap();
@@ -112,6 +122,7 @@ namespace core
         glUniform1i(materialSpecularMapUniform, 2);
         glBindTexture(GL_TEXTURE_2D, specular.getId());
 
+        glUniform4f(materialColorUniform, color.r, color.g, color.b, color.a);
         glUniform1f(materialShininessUniform, specularStrength);
         glBindVertexArray(0);
 
@@ -142,6 +153,8 @@ namespace core
         glBindTexture(GL_TEXTURE_2D, specularMap.getId());
 
         std::string materialUniform = "material.";
+        GLint materialColorUniform = glGetUniformLocation(shaderProgram, (materialUniform + "color").c_str());
+        glUniform4f(materialColorUniform, color.r, color.g, color.b, color.a);
         GLint materialShininessUniform = glGetUniformLocation(shaderProgram, (materialUniform + "shininess").c_str());
         glUniform1f(materialShininessUniform, specularStrength);
 
@@ -181,6 +194,15 @@ namespace core
     void Material::SetSpecularStrength(float specularStrength)
     {
         this->specularStrength = specularStrength;
+    }
+
+    glm::vec4 Material::GetColor()
+    {
+        return color;
+    }
+    void Material::SetColor(glm::vec4 color)
+    {
+        this->color = color;
     }
 
 }

@@ -12,6 +12,7 @@ struct Material
     sampler2D textureMap;
     sampler2D normalMap;
     sampler2D specularMap;
+    vec4 color;
     float shininess;
 };
 uniform Material material;
@@ -39,7 +40,7 @@ float specularIntensity;
 void main()
 {
     FragColor = vec4(0.0);
-    diffuseColor = texture(material.textureMap, uv);
+    diffuseColor = texture(material.textureMap, uv) + vec4(material.color.a * vec3(material.color.rgb), 0.0f);
     normal = texture(material.normalMap, uv).rgb;
     normal = normal * 2.0 - 1.0;
     specularIntensity = texture(material.specularMap, uv).r;

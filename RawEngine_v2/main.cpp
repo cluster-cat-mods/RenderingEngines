@@ -144,6 +144,38 @@ void GenerateImGuiObject(core::Model *model, GLFWwindow* window)
         }
         if (ImGui::TreeNode("Material"))
         {
+            if (ImGui::Button("...##1"))
+            {
+                std::string path = readFilePath(window);
+                if (!path.empty())
+                {
+                    model->material.SetVertexShader(path);
+                    model->material.CreateShaderProgram();
+                }
+            } ImGui::SameLine();
+            ImGui::Text(model->material.GetVertexShaderPath().c_str());
+            if (ImGui::Button("...##2"))
+            {
+                std::string path = readFilePath(window);
+                if (!path.empty())
+                {
+                    model->material.SetFragmentShader(path);
+                    model->material.CreateShaderProgram();
+                }
+            } ImGui::SameLine();
+            ImGui::Text(model->material.GetFragmentShaderPath().c_str());
+
+            glm::vec4 newColor = model->material.GetColor();
+            if (ImGui::ColorEdit4("Color", &newColor[0]))
+            {
+                model->material.SetColor(newColor);
+            }
+            float newSpecularStrength = model->material.GetSpecularStrength();
+            if (ImGui::DragFloat("Specular Strength", &newSpecularStrength, 0.01f, 0.0f, 1.0f))
+            {
+                model->material.SetSpecularStrength(newSpecularStrength);
+            }
+
             if (ImGui::ImageButton("Select TextureMap", model->material.GetTextureMap().getId(), ImVec2(40.0f, 40.0f)))
             {
                 std::string path = readFilePath(window);
@@ -158,11 +190,6 @@ void GenerateImGuiObject(core::Model *model, GLFWwindow* window)
             {
                 std::string path = readFilePath(window);
                 if (!path.empty()) model->material.SetSpecularMap(path);
-            }
-            float newSpecularStrength = model->material.GetSpecularStrength();
-            if (ImGui::DragFloat("Specular Strength", &newSpecularStrength, 0.05f, 0.0f, 1.0f))
-            {
-                model->material.SetSpecularStrength(newSpecularStrength);
             }
             ImGui::TreePop();
         }
@@ -280,17 +307,17 @@ int main()
 
 
     //region shaderProgram
-    const GLuint modelVertexShader = generateShader("shaders/modelVertex.vs", GL_VERTEX_SHADER);
-    const GLuint colorFragmentShader = generateShader("shaders/color.fs", GL_FRAGMENT_SHADER);
+    const GLuint lightVertexShader = generateShader("defaultAssets/shaders/model_default.vs", GL_VERTEX_SHADER);
+    const GLuint lightFragmentShader = generateShader("defaultAssets/shaders/light_default.fs", GL_FRAGMENT_SHADER);
 
-    const GLuint frameBufferVertexShader = generateShader("defaultAssets/shaders/frameBufferVertex.vs", GL_VERTEX_SHADER);
-    const GLuint frameBufferFragmentShader = generateShader("defaultAssets/shaders/frameBufferFragment.fs", GL_FRAGMENT_SHADER);
+    const GLuint frameBufferVertexShader = generateShader("defaultAssets/shaders/framebuffer_default.vs", GL_VERTEX_SHADER);
+    const GLuint frameBufferFragmentShader = generateShader("defaultAssets/shaders/framebuffer_default.fs", GL_FRAGMENT_SHADER);
 
     int success;
     char infoLog[512];
     const unsigned int gizmoShaderProgram = glCreateProgram();
-    glAttachShader(gizmoShaderProgram, modelVertexShader);
-    glAttachShader(gizmoShaderProgram, colorFragmentShader);
+    glAttachShader(gizmoShaderProgram, lightVertexShader);
+    glAttachShader(gizmoShaderProgram, lightFragmentShader);
     glLinkProgram(gizmoShaderProgram);
     glGetProgramiv(gizmoShaderProgram, GL_LINK_STATUS, &success);
     if (!success) {
@@ -298,8 +325,8 @@ int main()
         printf("Error! Making Shader Program: %s\n", infoLog);
     }
 
-    glDeleteShader(modelVertexShader);
-    glDeleteShader(colorFragmentShader);
+    glDeleteShader(lightVertexShader);
+    glDeleteShader(lightFragmentShader);
 
     GLint gizmo_mvpMatrixUniform = glGetUniformLocation(gizmoShaderProgram, "mvpMatrix");
     GLint gizmo_mMatrixUniform = glGetUniformLocation(gizmoShaderProgram, "mMatrix");
@@ -318,7 +345,6 @@ int main()
     glDeleteShader(frameBufferFragmentShader);
 
     GLuint sceneTextureUniform = glGetUniformLocation(frameBufferShaderProgram, "sceneTexture");
-
     //endregion shaderProgram
 
     //region frameBuffers

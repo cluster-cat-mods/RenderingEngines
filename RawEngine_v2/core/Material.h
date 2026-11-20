@@ -9,8 +9,11 @@ namespace core
     class Material
     {
     private:
-        std::vector<GLuint> vertexShaders;
-        std::vector<GLuint> fragmentShaders;
+        GLuint vertexShader = 0;
+        GLuint fragmentShader = 0;
+
+        std::string vsPath;
+        std::string fsPath;
 
         unsigned int shaderProgram = 0;
 
@@ -18,14 +21,21 @@ namespace core
         Texture normalMap = Texture(glm::vec3(0.5f, 0.5f, 1.0f));
         Texture specularMap = Texture(glm::vec3(0.0f));
 
+        glm::vec4 color = glm::vec4(1.0f, 1.0f, 1.0f, 0.1f);
         float specularStrength = 0.0f;
 
 
     public:
         Material();
 
-        GLuint AddVertexShader(std::string path);
-        GLuint AddFragmentShader(std::string path);
+        GLuint GetVertexShader();
+        GLuint GetFragmentShader();
+
+        void SetVertexShader(std::string path);
+        void SetFragmentShader(std::string path);
+
+        std::string GetVertexShaderPath();
+        std::string GetFragmentShaderPath();
 
         unsigned int CreateShaderProgram();
         void DeleteShaderProgram();
@@ -41,6 +51,9 @@ namespace core
 
         float GetSpecularStrength();
         void SetSpecularStrength(float specularStrength);
+
+        glm::vec4 GetColor();
+        void SetColor(glm::vec4 color);
 
     };
 }

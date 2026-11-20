@@ -76,7 +76,15 @@ add_custom_command(
         ${CMAKE_SOURCE_DIR}/defaultAssets/
         ${CMAKE_CURRENT_BINARY_DIR}/defaultAssets/)
 
-add_dependencies(RawEngine copy_shaders)
+add_custom_target(copy_defaultAssets ALL
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_SOURCE_DIR}/defaultAssets
+        ${CMAKE_CURRENT_BINARY_DIR}/defaultAssets
+        DEPENDS ${SHADER_FILES}
+        COMMENT "Copying defaultAssets  ..."
+)
+
+add_dependencies(RawEngine copy_defaultAssets)
 
 find_package(glad CONFIG REQUIRED)
 target_link_libraries(RawEngine PRIVATE glad::glad)
