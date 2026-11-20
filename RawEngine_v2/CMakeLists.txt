@@ -70,6 +70,12 @@ add_custom_target(copy_shaders ALL
         COMMENT "Copying shaders..."
 )
 
+add_custom_command(
+        TARGET RawEngine PRE_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_SOURCE_DIR}/defaultAssets/
+        ${CMAKE_CURRENT_BINARY_DIR}/defaultAssets/)
+
 add_dependencies(RawEngine copy_shaders)
 
 find_package(glad CONFIG REQUIRED)

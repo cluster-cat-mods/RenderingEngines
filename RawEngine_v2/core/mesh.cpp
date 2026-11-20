@@ -29,7 +29,7 @@ namespace core {
         glBindVertexArray(0);
     }
 
-    /*
+
     Mesh Mesh::generateQuad() {
         const glm::vec3 pos[] = {
                 glm::vec3(-1.0f, -1.0f, 0.0f),
@@ -39,8 +39,23 @@ namespace core {
                 glm::vec3(1.0f, 1.0f, 0.0f),
                 glm::vec3(-1.0f, 1.0f, 0.0f),
         };
-
+        const glm::vec3 tangents[] = {
+                glm::vec3(0.0f, 0.0f, 1.0f),
+                glm::vec3(0.0f, 0.0f, 1.0f),
+                glm::vec3(0.0f, 0.0f, 1.0f),
+                glm::vec3(0.0f, 0.0f, 1.0f),
+                glm::vec3(0.0f, 0.0f, 1.0f),
+                glm::vec3(0.0f, 0.0f, 1.0f)
+        };
         const glm::vec3 normals[] = {
+                glm::vec3(0.0f, 0.0f, 1.0f),
+                glm::vec3(0.0f, 0.0f, 1.0f),
+                glm::vec3(0.0f, 0.0f, 1.0f),
+                glm::vec3(0.0f, 0.0f, 1.0f),
+                glm::vec3(0.0f, 0.0f, 1.0f),
+                glm::vec3(0.0f, 0.0f, 1.0f)
+        };
+        const glm::vec3 biTangents[] = {
                 glm::vec3(0.0f, 0.0f, 1.0f),
                 glm::vec3(0.0f, 0.0f, 1.0f),
                 glm::vec3(0.0f, 0.0f, 1.0f),
@@ -61,12 +76,12 @@ namespace core {
         std::vector<Vertex> vertexVector;
         vertexVector.reserve(6);
         for (int i = 0; i < 6; ++i) {
-            vertexVector.emplace_back(pos[i], normals[i], uvs[i]);
+            vertexVector.emplace_back(pos[i], tangents[i], normals[i], biTangents[i], uvs[i]);
         }
 
         return Mesh(vertexVector, indices);
     }
-    */
+
 
     void Mesh::render(GLenum drawMode) {
         glBindVertexArray(VAO);

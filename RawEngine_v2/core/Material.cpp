@@ -64,12 +64,12 @@ namespace core
         int success;
         char infoLog[512];
         unsigned int shaderProgram = glCreateProgram();
-        if (vertexShaders.empty()) AddVertexShader("../defaultAssets/shaders/modelVertex.vs");
+        if (vertexShaders.empty()) AddVertexShader("defaultAssets/shaders/modelVertex.vs");
         for (GLuint vs : vertexShaders)
         {
             glAttachShader(shaderProgram, vs);
         }
-        if (fragmentShaders.empty()) AddFragmentShader("../defaultAssets/shaders/adsLight.fs");
+        if (fragmentShaders.empty()) AddFragmentShader("defaultAssets/shaders/adsLight.fs");
         for (GLuint fs : fragmentShaders)
         {
             glAttachShader(shaderProgram, fs);

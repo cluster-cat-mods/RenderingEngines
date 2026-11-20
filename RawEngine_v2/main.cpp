@@ -39,8 +39,8 @@ extern "C"
 __declspec(dllexport) unsigned long NvOptimusEnablement = 0x00000001;
 }
 
-int winWidth = 800;
-int winHeight = 600;
+int winWidth = 1280;
+int winHeight = 720;
 
 GLenum drawMode = GL_TRIANGLES;
 
@@ -283,6 +283,9 @@ int main()
     const GLuint modelVertexShader = generateShader("shaders/modelVertex.vs", GL_VERTEX_SHADER);
     const GLuint colorFragmentShader = generateShader("shaders/color.fs", GL_FRAGMENT_SHADER);
 
+    const GLuint frameBufferVertexShader = generateShader("defaultAssets/shaders/frameBufferVertex.vs", GL_VERTEX_SHADER);
+    const GLuint frameBufferFragmentShader = generateShader("defaultAssets/shaders/frameBufferFragment.fs", GL_FRAGMENT_SHADER);
+
     int success;
     char infoLog[512];
     const unsigned int gizmoShaderProgram = glCreateProgram();
@@ -301,7 +304,59 @@ int main()
     GLint gizmo_mvpMatrixUniform = glGetUniformLocation(gizmoShaderProgram, "mvpMatrix");
     GLint gizmo_mMatrixUniform = glGetUniformLocation(gizmoShaderProgram, "mMatrix");
 
+    const unsigned int frameBufferShaderProgram = glCreateProgram();
+    glAttachShader(frameBufferShaderProgram, frameBufferVertexShader);
+    glAttachShader(frameBufferShaderProgram, frameBufferFragmentShader);
+    glLinkProgram(frameBufferShaderProgram);
+    glGetProgramiv(frameBufferShaderProgram, GL_LINK_STATUS, &success);
+    if (!success) {
+        glGetProgramInfoLog(frameBufferShaderProgram, 512, NULL, infoLog);
+        printf("Error! Making Shader Program: %s\n", infoLog);
+    }
+
+    glDeleteShader(frameBufferVertexShader);
+    glDeleteShader(frameBufferFragmentShader);
+
+    GLuint sceneTextureUniform = glGetUniformLocation(frameBufferShaderProgram, "sceneTexture");
+
     //endregion shaderProgram
+
+    //region frameBuffers
+    //generate buffer
+    unsigned int framebuffer;
+    glGenFramebuffers(1, &framebuffer);
+    //bind buffer
+    glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
+
+    // generate texture
+    unsigned int textureColorbuffer;
+    glGenTextures(1, &textureColorbuffer);
+    glBindTexture(GL_TEXTURE_2D, textureColorbuffer);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, winWidth, winHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR );
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    //attach it to currently bound framebuffer object
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, textureColorbuffer, 0);
+
+    //generate render buffer attachment
+    unsigned int rbo;
+    glGenRenderbuffers(1, &rbo);
+    glBindRenderbuffer(GL_RENDERBUFFER, rbo);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, winWidth, winHeight);
+    glBindRenderbuffer(GL_RENDERBUFFER, 0);
+
+    //attach rbo to depth and stencil attachment of the frame render buffer
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, rbo);
+
+    //debug log
+    if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+    std::cout << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!" << std::endl;
+    //rebind screen buffer
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+    //endregion frameBuffers
 
 
     //region Instantiating
@@ -337,6 +392,8 @@ int main()
     beer.transform.SetRotation(glm::vec3(0.0f, 0.0f, 20.0f));
     core::Model* beerOb = ActiveScene->Instantiate(beer);
 
+    core::Mesh screenQuad = core::Mesh::generateQuad();
+
     core::Light light1(core::Transform(), glm::vec4(1.0f, 0.97f, 0.83f, 1.0f));
     core::Light* mainLight = ActiveScene->Instantiate(light1);
     mainLight->SetName("mainLight");
@@ -366,7 +423,7 @@ int main()
     //region input
     core::Input input;
     float cameraMoveSpeed = 1.0f;
-    float cameraRotateSpeed = 1.0;
+    float cameraRotateSpeed = 10.0;
     float cameraZoomSpeed = 1.0f;
     deltaPtr = &deltaTime;
     input.AddKeyMap(GLFW_KEY_0, GLFW_PRESS, false, [](){std::cout << *deltaPtr << std::endl;});
@@ -392,7 +449,13 @@ int main()
 
     while (!glfwWindowShouldClose(window))
     {
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        // first pass
+        glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
+        glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // we're not using the stencil buffer now
+        glEnable(GL_DEPTH_TEST);
+
 
         //region ImGui
         ImGui_ImplOpenGL3_NewFrame();
@@ -551,7 +614,7 @@ int main()
             }
 
             glUseProgram(shaderProgram);
-            model.render(drawMode);
+            model.render(GL_TRIANGLES);
             glBindVertexArray(0);
         }
 
@@ -568,8 +631,17 @@ int main()
             glBindVertexArray(0);
         }
 
+        // second pass
+        glBindFramebuffer(GL_FRAMEBUFFER, 0); // back to default
+        glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT);
 
-
+        glUseProgram(frameBufferShaderProgram);
+        glActiveTexture(GL_TEXTURE0);
+        glUniform1i(sceneTextureUniform, 0);
+        glBindTexture(GL_TEXTURE_2D, textureColorbuffer);
+        glDisable(GL_DEPTH_TEST);
+        screenQuad.render(GL_TRIANGLES);
 
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
