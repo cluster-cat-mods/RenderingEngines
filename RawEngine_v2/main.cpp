@@ -126,6 +126,11 @@ core::Scene* ActiveScene{};
 //region ImGuiMethods
 void GenerateImGuiObject(core::Model *model, GLFWwindow* window)
 {
+    bool newEnabled = model->IsEnabled();
+    if (ImGui::Checkbox("##bool", &newEnabled))
+    {
+        model->SetEnabled(newEnabled);
+    } ImGui::SameLine();
     if (ImGui::CollapsingHeader(model->GetName().c_str()))
     {
         if (ImGui::TreeNode("Transform"))
@@ -195,6 +200,7 @@ void GenerateImGuiObject(core::Model *model, GLFWwindow* window)
         }
 
     }
+
 }
 void generateImGuiObject(core::Camera *camera)
 {
@@ -231,6 +237,11 @@ void generateImGuiObject(core::Camera *camera)
 }
 void generateImGuiObject(core::Light *light)
 {
+    bool newEnabled = light->IsEnabled();
+    if (ImGui::Checkbox("##bool", &newEnabled))
+    {
+        light->SetEnabled(newEnabled);
+    } ImGui::SameLine();
     if (ImGui::CollapsingHeader(light->GetName().c_str()))
     {
         glm::vec3 newPos = light->transform.GetPosition();
@@ -249,6 +260,7 @@ void generateImGuiObject(core::Light *light)
             light->SetColor(glm::vec4(newCol, 1));
         }
     }
+
 }
 
 //endregion ImGuiMethods
@@ -608,6 +620,7 @@ int main()
         //endregion modelBehaviour
         for (core::Model& model : *ActiveScene->GetModels())
         {
+            if (!model.IsEnabled()) continue;
             const unsigned int shaderProgram = model.material.GetShaderProgram();
             GLint mvpMatrixUniform = glGetUniformLocation(shaderProgram, "mvpMatrix");
             GLint mMatrixUniform = glGetUniformLocation(shaderProgram, "mMatrix");
@@ -628,6 +641,7 @@ int main()
             int i = 0;
             for (core::Light& light : *ActiveScene->GetLights())
             {
+                if (!light.IsEnabled()) continue;
                 glUseProgram(shaderProgram);
                 std::string lightUniformString = "lights[" + std::to_string(i) + "].";
                 GLint lightColorUniform = glGetUniformLocation(shaderProgram, (lightUniformString + "color").c_str());
@@ -647,6 +661,7 @@ int main()
 
         for (core::Light& light : *ActiveScene->GetLights())
         {
+            if (! light.IsEnabled()) continue;
             core::Model lightGizmo = core::AssimpLoader::loadModel("models/sphere.obj");
             lightGizmo.transform.SetPosition(light.transform.GetPosition());
             lightGizmo.transform.Scale(glm::vec3(0.2f));

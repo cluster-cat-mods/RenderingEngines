@@ -8,6 +8,7 @@ namespace core
     {
     protected:
         std::string name = "Object";
+        bool enabled = true;
     public:
         core::Transform transform = core::Transform();
 
@@ -15,6 +16,10 @@ namespace core
 
         std::string GetName();
         void SetName(std::string);
+
+        void SetEnabled(bool);
+        bool IsEnabled();
+
     };
 
 

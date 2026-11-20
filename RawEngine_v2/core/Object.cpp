@@ -10,4 +10,13 @@ namespace core
     {
         this->name = name;
     }
+
+    void Object::SetEnabled(bool enabled)
+    {
+        this->enabled = enabled;
+    }
+    bool Object::IsEnabled()
+    {
+        return enabled;
+    }
 }
